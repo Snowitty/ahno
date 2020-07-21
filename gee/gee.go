@@ -13,14 +13,15 @@ type HandlerFunc func(*Context)
 type (
 	RouterGroup struct {
 		prefix      string
-		middlewares []HandlerFunc
-		parent      *RouterGroup
-		engine      *Engine
+		middlewares []HandlerFunc // support middleware
+		parent      *RouterGroup  // support nesting
+		engine      *Engine       // all groups share a Engine instance
 	}
+
 	Engine struct {
 		*RouterGroup
 		router *router
-		groups []*RouterGroup
+		groups []*RouterGroup // store all groups
 	}
 )
 
@@ -32,6 +33,8 @@ func New() *Engine {
 	return engine
 }
 
+// Group is defined to create a new RouterGroup
+// remember all groups share the same Engine instance
 func (group *RouterGroup) Group(prefix string) *RouterGroup {
 	engine := group.engine
 	newGroup := &RouterGroup{
@@ -41,6 +44,11 @@ func (group *RouterGroup) Group(prefix string) *RouterGroup {
 	}
 	engine.groups = append(engine.groups, newGroup)
 	return newGroup
+}
+
+// Use is defined to add middleware to the group
+func (group *RouterGroup) Use(middlewares ...HandlerFunc) {
+	group.middlewares = append(group.middlewares, middlewares...)
 }
 
 func (group *RouterGroup) addRoute(method string, comp string, handler HandlerFunc) {
@@ -64,19 +72,14 @@ func (engine *Engine) Run(addr string) (err error) {
 	return http.ListenAndServe(addr, engine)
 }
 
-func (group *RouterGroup) Use(midllewares ...HandlerFunc) {
-	group.middlewares = append(group.middlewares, midllewares...)
-}
-
 func (engine *Engine) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	var midllewares []HandlerFunc
+	var middlewares []HandlerFunc
 	for _, group := range engine.groups {
 		if strings.HasPrefix(req.URL.Path, group.prefix) {
-			midllewares = append(midllewares, group.middlewares...)
+			middlewares = append(middlewares, group.middlewares...)
 		}
 	}
-
 	c := newContext(w, req)
-	c.handlers = midllewares
+	c.handlers = middlewares
 	engine.router.handle(c)
 }

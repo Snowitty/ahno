@@ -17,14 +17,17 @@ func newRouter() *router {
 	}
 }
 
+// Only one * is allowed
 func parsePattern(pattern string) []string {
 	vs := strings.Split(pattern, "/")
 
 	parts := make([]string, 0)
 	for _, item := range vs {
-		parts = append(parts, item)
-		if item[0] == '*' {
-			break
+		if item != "" {
+			parts = append(parts, item)
+			if item[0] == '*' {
+				break
+			}
 		}
 	}
 	return parts
@@ -40,7 +43,6 @@ func (r *router) addRoute(method string, pattern string, handler HandlerFunc) {
 	}
 	r.roots[method].insert(pattern, parts, 0)
 	r.handlers[key] = handler
-
 }
 
 func (r *router) getRoute(method string, path string) (*node, map[string]string) {
@@ -69,6 +71,16 @@ func (r *router) getRoute(method string, path string) (*node, map[string]string)
 	}
 
 	return nil, nil
+}
+
+func (r *router) getRoutes(method string) []*node {
+	root, ok := r.roots[method]
+	if !ok {
+		return nil
+	}
+	nodes := make([]*node, 0)
+	root.travel(&nodes)
+	return nodes
 }
 
 func (r *router) handle(c *Context) {

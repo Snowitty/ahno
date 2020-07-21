@@ -1,6 +1,9 @@
 package gee
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 type node struct {
 	pattern  string
@@ -9,24 +12,8 @@ type node struct {
 	isWild   bool
 }
 
-func (n *node) mathChild(part string) *node {
-	for _, child := range n.children {
-		if child.part == part || child.isWild {
-			return child
-		}
-	}
-	return nil
-}
-
-func (n *node) mathChildren(part string) []*node {
-	nodes := make([]*node, 0)
-	for _, child := range n.children {
-		if child.part == part || child.isWild {
-			nodes = append(nodes, child)
-		}
-	}
-
-	return nodes
+func (n *node) String() string {
+	return fmt.Sprintf("node{pattern=%s, part=%s, isWild=%t}", n.pattern, n.part, n.isWild)
 }
 
 func (n *node) insert(pattern string, parts []string, height int) {
@@ -36,7 +23,7 @@ func (n *node) insert(pattern string, parts []string, height int) {
 	}
 
 	part := parts[height]
-	child := n.mathChild(part)
+	child := n.matchChild(part)
 	if child == nil {
 		child = &node{part: part, isWild: part[0] == ':' || part[0] == '*'}
 		n.children = append(n.children, child)
@@ -53,7 +40,7 @@ func (n *node) search(parts []string, height int) *node {
 	}
 
 	part := parts[height]
-	children := n.mathChildren(part)
+	children := n.matchChildren(part)
 
 	for _, child := range children {
 		result := child.search(parts, height+1)
@@ -61,6 +48,34 @@ func (n *node) search(parts []string, height int) *node {
 			return result
 		}
 	}
-	return nil
 
+	return nil
+}
+
+func (n *node) travel(list *([]*node)) {
+	if n.pattern != "" {
+		*list = append(*list, n)
+	}
+	for _, child := range n.children {
+		child.travel(list)
+	}
+}
+
+func (n *node) matchChild(part string) *node {
+	for _, child := range n.children {
+		if child.part == part || child.isWild {
+			return child
+		}
+	}
+	return nil
+}
+
+func (n *node) matchChildren(part string) []*node {
+	nodes := make([]*node, 0)
+	for _, child := range n.children {
+		if child.part == part || child.isWild {
+			nodes = append(nodes, child)
+		}
+	}
+	return nodes
 }

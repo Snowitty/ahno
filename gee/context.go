@@ -25,10 +25,11 @@ type Context struct {
 
 func newContext(w http.ResponseWriter, req *http.Request) *Context {
 	return &Context{
-		Writer: w,
-		Req:    req,
 		Path:   req.URL.Path,
 		Method: req.Method,
+		Req:    req,
+		Writer: w,
+		index:  -1,
 	}
 }
 
@@ -78,16 +79,6 @@ func (c *Context) HTML(code int, html string) {
 	c.SetHeader("Content-Type", "text/html")
 	c.Status(code)
 	c.Writer.Write([]byte(html))
-}
-
-func newContext(w http.ResponseWriter, req *http.Request) *Context {
-	return &Context{
-		Path:   req.URL.Path,
-		Method: req.Method,
-		Req:    req,
-		Writer: w,
-		index:  -1,
-	}
 }
 
 func (c *Context) Next() {

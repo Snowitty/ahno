@@ -3,6 +3,7 @@ package gee
 import (
 	"log"
 	"net/http"
+	"path"
 	"strings"
 )
 
@@ -65,6 +66,30 @@ func (group *RouterGroup) GET(pattern string, handler HandlerFunc) {
 // POST defines the method to add POST request
 func (group *RouterGroup) POST(pattern string, handler HandlerFunc) {
 	group.addRoute("POST", pattern, handler)
+}
+
+//create static handler
+func (group *RouterGroup) createStaticHandler(relativePath string, fs http.FileSystem) HandlerFunc {
+	absolutepath := path.Join(group.prefix, relativePath)
+	fileserver := http.StripPrefix(absolutepath, http.FileServer(fs))
+	return func(c *Context) {
+		file := c.Param("filepath")
+		//Check if file exits and/or if we have premission to access it
+		if _, err := fs.Open(file); err != nil {
+			c.Status(http.StatusNotFound)
+			return
+		}
+
+		fileserver.ServeHTTP(c.Writer, c.Req)
+	}
+}
+
+//serve static files
+func (group *RouterGroup) Static(relativePath string, root string) {
+	handler := group.createStaticHandler(relativePath, http.Dir(root))
+	urlPattern := path.Join(relativePath, "/*filepath")
+	//Register GET handlers
+	group.GET(urlPattern, handler)
 }
 
 // Run defines the method to start a http server
